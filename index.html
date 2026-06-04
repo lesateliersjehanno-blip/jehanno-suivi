@@ -426,8 +426,9 @@ function filterSel(p){
   const q = document.getElementById(searchId).value.trim();
   fillSel('sel'+key, q);
   const useBtn = document.getElementById(useId);
-  if(q && !CHANTIERS.some(c=>c.toLowerCase()===q.toLowerCase())){
-    useBtn.textContent = '+ Utiliser : "' + q + '"';
+  // Toujours montrer le bouton si du texte est tapé
+  if(q){
+    useBtn.textContent = '✎ Utiliser "' + q + '" comme chantier';
     useBtn.style.display = 'block';
   } else {
     useBtn.style.display = 'none';

@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="JEHANNO">
 <meta name="theme-color" content="#0f1117">
 
-<title>JEHANNO — Lair</title>
+<title>JEHANNO — Allanic</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -367,7 +367,7 @@ async function loginAs(name,save){
   document.getElementById('df').textContent=MOIS_FR[n.getMonth()]+' '+n.getFullYear();
   fillSel('selMatin'); fillSel('selApm');
   // Afficher ou masquer le panier selon le compagnon
-  const hasPanier = AVEC_PANIER.includes(name);
+  const hasPanier = false;
   document.querySelector('.period-card.panier-card').style.display = hasPanier ? '' : 'none';
   showScreen('appScreen');
   await loadUserData();
@@ -426,8 +426,9 @@ function filterSel(p){
   const q = document.getElementById(searchId).value.trim();
   fillSel('sel'+key, q);
   const useBtn = document.getElementById(useId);
-  if(q && !CHANTIERS.some(c=>c.toLowerCase()===q.toLowerCase())){
-    useBtn.textContent = '+ Utiliser : "' + q + '"';
+  // Toujours montrer le bouton si du texte est tapé
+  if(q){
+    useBtn.textContent = '✎ Utiliser "' + q + '" comme chantier';
     useBtn.style.display = 'block';
   } else {
     useBtn.style.display = 'none';
@@ -720,7 +721,7 @@ function toast(msg,type=''){
 
 // Lancer l'appli au chargement de la page
 document.addEventListener('DOMContentLoaded', async function() {
-  await loginAs('LAIR FLORIAN', true);
+  await loginAs('ALLANIC PATRICE', true);
   initFirebase().catch(()=>setSyncStatus('offline'));
 });
 </script>
