@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi Temps JEHANNO</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1c2033;color:#eef0f8;font-family:'DM Mono',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.logo{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#f0a500;margin-bottom:6px;text-align:center}
+.sub{font-size:11px;color:#6b7090;letter-spacing:2px;text-transform:uppercase;margin-bottom:40px;text-align:center}
+.label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7090;margin-bottom:12px}
+.list{display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px}
+.btn{display:flex;background:#252a3d;border:1.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;text-decoration:none;color:#eef0f8;align-items:center;gap:12px;transition:all .15s}
+.btn:hover{border-color:#f0a500;background:rgba(240,165,0,0.06)}
+.av{width:38px;height:38px;border-radius:50%;background:#2e3450;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:#8890b0;flex-shrink:0}
+.cn{font-size:13px;color:#eef0f8;font-weight:500}
+.loading{color:#6b7090;font-size:11px;text-align:center;padding:20px}
+.err{color:#e05c5c;font-size:11px;text-align:center;padding:20px}
+</style>
+</head>
+<body>
+<div class="logo">⚒ JEHANNO</div>
+<div class="sub">Suivi Temps — Accès compagnons</div>
+<div class="label">Sélectionnez votre nom</div>
+<div class="list" id="list">
+  <div class="loading">Chargement...</div>
+</div>
+
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyplaceholder",
+  databaseURL: "https://oj-chantier-7ed1d-default-rtdb.europe-west1.firebasedatabase.app"
+};
+
+// Initialisation Firebase (mode lecture publique — règles à adapter si besoin)
+let db;
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.database();
+} catch(e) {
+  document.getElementById('list').innerHTML = '<div class="err">Erreur Firebase</div>';
+}
+
+function initials(name) {
+  const parts = name.trim().split(/\s+/);
+  return parts.slice(0,2).map(p => p[0]).join('').toUpperCase();
+}
+
+function toDisplayName(name) {
+  return name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+function renderList(compagnons) {
+  const list = document.getElementById('list');
+  if (!compagnons || compagnons.length === 0) {
+    list.innerHTML = '<div class="err">Aucun compagnon enregistré</div>';
+    return;
+  }
+  // Tri alphabétique par nom affiché
+  compagnons.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  list.innerHTML = compagnons.map(c => `
+  <a class="btn" href="${c.slug}.html">
+    <div class="av">${initials(c.name)}</div>
+    <div><div class="cn">${toDisplayName(c.name)}</div></div>
+  </a>`).join('');
+}
+
+// Chargement depuis Firebase — nœud "compagnons"
+// Structure attendue : { "slug": { name: "NOM PRENOM", slug: "nom-prenom" }, ... }
+db.ref('compagnons').on('value', snap => {
+  const list = document.getElementById('list');
+  if (!snap.exists()) {
+    list.innerHTML = '<div class="err">Aucun compagnon enregistré</div>';
+    return;
+  }
+  const val = snap.val();
+  let compagnons = [];
+  if (typeof val === 'object' && !Array.isArray(val)) {
+    compagnons = Object.values(val).filter(c => c && c.slug && c.name);
+  }
+  renderList(compagnons);
+}, err => {
+  document.getElementById('list').innerHTML = '<div class="err">Impossible de charger la liste</div>';
+});
+</script>
+</body>
+</html>
