@@ -40,6 +40,8 @@ nav h1{font-family:'Times New Roman',Times,serif;font-size:19px;font-weight:800;
 .tab{flex:1;padding:11px 4px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;position:relative}
 .info-badge{position:absolute;top:6px;right:18px;width:7px;height:7px;border-radius:50%;background:#e05c5c}
 .tab.active{color:var(--accent);border-bottom-color:var(--accent);font-family:'Times New Roman',Times,serif}
+.tab.info-alert{background:var(--danger);color:#fff;font-weight:700}
+.tab.info-alert.active{background:var(--danger);color:#fff;border-bottom-color:#fff}
 
 /* INFORMATIONS */
 .info-item{background:var(--surf);border:1px solid var(--border2);border-left:4px solid var(--accent);border-radius:var(--rs);padding:13px 15px;margin-bottom:10px}
@@ -228,15 +230,15 @@ tr:last-child td{border-bottom:none}
   </nav>
 
   <div class="tabs">
-    <button class="tab active" onclick="showTab('info',this)">Info<span class="info-badge" id="infoBadge" style="display:none"></span></button>
+    <button class="tab" id="infoTabBtn" onclick="showTab('info',this)">Info</button>
     <button class="tab" onclick="showTab('saisie',this)">Saisie</button>
     <button class="tab" onclick="showTab('semaine',this)">Semaine</button>
-    <button class="tab" onclick="showTab('mois',this)">Mon mois</button>
+    <button class="tab active" onclick="showTab('mois',this)">Mon mois</button>
     <button class="tab" onclick="showTab('recent',this)">Récent</button>
   </div>
 
   <!-- ── INFORMATIONS ── -->
-  <div class="page" id="page-info">
+  <div class="page hidden" id="page-info">
     <div class="slabel">Informations de l'entreprise</div>
     <div id="infoList"><div class="empty">Aucune information</div></div>
   </div>
@@ -307,7 +309,7 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <!-- ── MON MOIS ── -->
-  <div class="page hidden" id="page-mois">
+  <div class="page" id="page-mois">
     <div class="month-nav">
       <button class="mnav-btn" onclick="changeMonth(-1)">◀</button>
       <div class="month-lbl" id="monthLbl">—</div>
@@ -974,11 +976,11 @@ function setLastInfoSeen(ts){
   localStorage.setItem('oj_last_info_seen', String(ts));
 }
 function updateInfoBadge(){
-  const badge = document.getElementById('infoBadge');
-  if(!badge) return;
+  const btn = document.getElementById('infoTabBtn');
+  if(!btn) return;
   const lastSeen = getLastInfoSeen();
   const hasUnread = sortedInfos.some(info => (info.ts||0) > lastSeen);
-  badge.style.display = hasUnread ? 'block' : 'none';
+  btn.classList.toggle('info-alert', hasUnread);
 }
 function setSyncStatus(s){
   const dot=document.getElementById('syncDot');
