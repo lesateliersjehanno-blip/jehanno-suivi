@@ -20,6 +20,7 @@ body{background:#1c2033;color:#eef0f8;font-family:'DM Mono',monospace;min-height
 .cn{font-size:13px;color:#eef0f8;font-weight:500}
 .cs{font-size:10px;color:#6b7090;margin-top:3px}
 .cs.warn{color:#f0a500}
+.cs.danger{color:#e05c5c}
 .cs.ok{color:#2dce89}
 .loading{color:#6b7090;font-size:11px;text-align:center;padding:20px}
 .err{color:#e05c5c;font-size:11px;text-align:center;padding:20px}
@@ -157,7 +158,8 @@ async function loadMissing(c) {
     const snap = await db.ref('saisies/' + userKey(c.name)).once('value');
     const saisies = snap.exists() ? snap.val() : {};
     const { manqueMatin, manqueApm } = missingCounts(saisies);
-    if (manqueMatin === 0 && manqueApm === 0) {
+    const total = manqueMatin + manqueApm;
+    if (total === 0) {
       el.textContent = '✓ à jour';
       el.className = 'cs ok';
     } else {
@@ -165,7 +167,7 @@ async function loadMissing(c) {
       if (manqueMatin > 0) parts.push(manqueMatin + ' matin' + (manqueMatin > 1 ? 's' : ''));
       if (manqueApm > 0) parts.push(manqueApm + ' après-midi' + (manqueApm > 1 ? 's' : ''));
       el.textContent = parts.join(' · ') + ' à compléter';
-      el.className = 'cs warn';
+      el.className = 'cs ' + (total > 10 ? 'danger' : 'warn');
     }
   } catch (e) {
     el.textContent = '';
