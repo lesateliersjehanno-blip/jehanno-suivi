@@ -13,8 +13,17 @@ body{background:#1c2033;color:#eef0f8;font-family:'DM Mono',monospace;min-height
 .logo{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#f0a500;margin-bottom:6px;text-align:center}
 .sub{font-size:11px;color:#6b7090;letter-spacing:2px;text-transform:uppercase;margin-bottom:40px;text-align:center}
 .label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7090;margin-bottom:12px}
+.filter-bar{display:flex;align-items:center;gap:10px;width:100%;max-width:360px;margin-bottom:14px}
+.filter-bar .flabel{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7090;flex-shrink:0}
+.filter-bar select{flex:1;background:#252a3d;border:1.5px solid rgba(255,255,255,0.15);border-radius:8px;padding:9px 10px;color:#eef0f8;font-family:'DM Mono',monospace;font-size:12px;outline:none}
+.filter-bar select:focus{border-color:#f0a500}
 .list{display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px}
-.btn{display:flex;background:#252a3d;border:1.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;text-decoration:none;color:#eef0f8;align-items:center;gap:12px;transition:all .15s}
+.row{display:flex;align-items:stretch;gap:8px}
+.row.filtered-out{display:none}
+.centre{width:46px;flex-shrink:0;background:#252a3d;border:1.5px solid rgba(255,255,255,0.15);border-radius:10px;color:#f0a500;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;text-align:center;text-transform:uppercase;outline:none}
+.centre:focus{border-color:#f0a500}
+.centre::placeholder{color:#4a4f6b}
+.btn{display:flex;flex:1;min-width:0;background:#252a3d;border:1.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;text-decoration:none;color:#eef0f8;align-items:center;gap:12px;transition:all .15s}
 .btn:hover{border-color:#f0a500;background:rgba(240,165,0,0.06)}
 .av{width:38px;height:38px;border-radius:50%;background:#2e3450;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:#8890b0;flex-shrink:0}
 .cn{font-size:13px;color:#eef0f8;font-weight:500}
@@ -30,6 +39,10 @@ body{background:#1c2033;color:#eef0f8;font-family:'DM Mono',monospace;min-height
 <div class="logo">⚒ JEHANNO</div>
 <div class="sub">Suivi Temps — Accès compagnons</div>
 <div class="label">Sélectionnez votre nom</div>
+<div class="filter-bar">
+  <span class="flabel">Centre</span>
+  <select id="centreFilter" onchange="applyFilter()"><option value="">Tous</option></select>
+</div>
 <div class="list" id="list">
   <div class="loading">Chargement...</div>
 </div>
@@ -85,7 +98,7 @@ const COMPAGNONS = [
   { name: "LAIDET JEREMIE", slug: "laidet-jeremie" },
   { name: "LE GALL DU TERTRE ARTHUR", slug: "le-gall-du-tertre-arthur" },
   { name: "LE GOUAILLE BENJAMIN", slug: "le-gouaille-benjamin" },
-  { name: "LE MOUEL YVES MARIE", slug: "le-mouel-yves-marie" },
+  { name: "LE MOUEL YVES-MARIE", slug: "le-mouel-yves-marie" },
   { name: "LEROUX BENOIT", slug: "leroux-benoit" },
   { name: "MAGUION ANTOINE", slug: "maguion-antoine" },
   { name: "MATHE BENJAMIN", slug: "mathe-benjamin" },
@@ -105,16 +118,31 @@ const COMPAGNONS = [
   { name: "KERJEAN JULES", slug: "kerjean-jules" },
 ];
 
-function initials(name) {
+// Sépare "NOM PRENOM" -> { prenom, nom } : le dernier mot est considéré
+// comme le prénom (compatible avec les prénoms composés écrits avec un tiret).
+function firstLast(name) {
   const parts = name.trim().split(/\s+/);
-  return parts.slice(0,2).map(p => p[0]).join('').toUpperCase();
+  const prenom = parts[parts.length - 1];
+  const nom = parts.slice(0, -1).join(' ');
+  return { prenom, nom };
 }
 
-function toDisplayName(name) {
-  return name.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+function titleCaseWord(w) {
+  return w.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()).join('-');
+}
+function titleCase(str) {
+  return str.split(' ').map(titleCaseWord).join(' ');
 }
 
-function userKey(n){ return n.replace(/[^a-zA-Z0-9]/g,'_'); }
+function initials(name) {
+  const { prenom, nom } = firstLast(name);
+  const nomFirst = nom.split(' ')[0] || '';
+  return ((prenom[0] || '') + (nomFirst[0] || '')).toUpperCase();
+}
+
+function userKey(n) { return n.replace(/[^a-zA-Z0-9]/g, '_'); }
+
+let CENTRES = {};
 
 function renderList(compagnons) {
   const list = document.getElementById('list');
@@ -122,12 +150,57 @@ function renderList(compagnons) {
     list.innerHTML = '<div class="err">Aucun compagnon enregistré</div>';
     return;
   }
-  const sorted = compagnons.slice().sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  list.innerHTML = sorted.map(c => `
-  <a class="btn" href="${c.slug}.html">
-    <div class="av">${initials(c.name)}</div>
-    <div><div class="cn">${toDisplayName(c.name)}</div><div class="cs" id="cs-${c.slug}">…</div></div>
-  </a>`).join('');
+  const sorted = compagnons.slice().sort((a, b) => {
+    const pa = firstLast(a.name).prenom, pb = firstLast(b.name).prenom;
+    return pa.localeCompare(pb, 'fr');
+  });
+  list.innerHTML = sorted.map(c => {
+    const { prenom, nom } = firstLast(c.name);
+    const centre = CENTRES[c.slug] || '';
+    return `
+  <div class="row" data-slug="${c.slug}" data-centre="${centre}">
+    <input class="centre" maxlength="4" placeholder="—" value="${centre}" oninput="onCentreInput(this,'${c.slug}')" onchange="onCentreChange(this,'${c.slug}')">
+    <a class="btn" href="${c.slug}.html">
+      <div class="av">${initials(c.name)}</div>
+      <div><div class="cn">${titleCase(prenom)} ${titleCase(nom)}</div><div class="cs" id="cs-${c.slug}">…</div></div>
+    </a>
+  </div>`;
+  }).join('');
+}
+
+function onCentreInput(input, slug) {
+  const val = input.value.toUpperCase();
+  if (input.value !== val) input.value = val;
+  const row = input.closest('.row');
+  row.dataset.centre = val;
+  CENTRES[slug] = val;
+  refreshCentreFilterOptions();
+  applyFilter();
+}
+
+function onCentreChange(input, slug) {
+  const val = input.value.trim().toUpperCase();
+  if (db) {
+    db.ref('config/centres/' + slug).set(val).catch(() => {});
+  }
+}
+
+function refreshCentreFilterOptions() {
+  const sel = document.getElementById('centreFilter');
+  if (!sel) return;
+  const current = sel.value;
+  const values = Array.from(new Set(Object.values(CENTRES).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'fr'));
+  sel.innerHTML = '<option value="">Tous</option>' + values.map(v => `<option value="${v}">${v}</option>`).join('');
+  if (values.includes(current)) sel.value = current;
+}
+
+function applyFilter() {
+  const sel = document.getElementById('centreFilter');
+  const val = sel ? sel.value : '';
+  document.querySelectorAll('.row').forEach(row => {
+    const show = !val || row.dataset.centre === val;
+    row.classList.toggle('filtered-out', !show);
+  });
 }
 
 // Calcule le nombre de matins/après-midis non saisis ce mois-ci
@@ -181,6 +254,12 @@ async function initFirebase() {
   } catch (e) {
     return;
   }
+  try {
+    const snap = await db.ref('config/centres').once('value');
+    if (snap.exists()) CENTRES = snap.val() || {};
+  } catch (e) {}
+  renderList(COMPAGNONS);
+  refreshCentreFilterOptions();
   COMPAGNONS.forEach(loadMissing);
 }
 
