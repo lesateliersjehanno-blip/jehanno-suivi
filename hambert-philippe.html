@@ -178,6 +178,7 @@ tr:last-child td{border-bottom:none}
 .pb-inline.non{border-color:var(--danger);color:var(--danger);background:rgba(224,92,92,.1)}
 .save-inline{background:var(--accent);border:none;border-radius:var(--rs);padding:7px 14px;font-family:'Syne',sans-serif;font-weight:800;font-size:11px;color:#000;cursor:pointer;margin-top:4px}
 .cancel-inline{background:var(--surf3);border:1px solid var(--border2);border-radius:var(--rs);padding:7px 14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);cursor:pointer;margin-top:4px}
+.repeat-inline{background:var(--surf3);border:1px solid var(--border2);border-radius:var(--rs);padding:7px 12px;font-size:14px;color:var(--accent);cursor:pointer;margin-top:4px;margin-left:auto;line-height:1}
 
 .no-data{text-align:center;padding:24px;color:var(--muted);font-size:11px}
 .divider{height:1px;background:var(--border);margin:14px 0}
@@ -425,6 +426,31 @@ function openPdfFromBase64(idx){
 }
 
 const JOURS=['DIM','LUN','MAR','MER','JEU','VEN','SAM'];
+// ── JOURS FÉRIÉS (France) — calculés automatiquement, aucune saisie requise ──
+function paquesDate(year){
+  const a=year%19,b=Math.floor(year/100),c=year%100;
+  const d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m+114)/31);
+  const day=((h+l-7*m+114)%31)+1;
+  return new Date(year,month-1,day);
+}
+function isoDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function feriesFR(year){
+  const set=new Set([
+    `${year}-01-01`,`${year}-05-01`,`${year}-05-08`,`${year}-07-14`,
+    `${year}-08-15`,`${year}-11-01`,`${year}-11-11`,`${year}-12-25`
+  ]);
+  const p=paquesDate(year);
+  const lp=new Date(p);lp.setDate(p.getDate()+1);
+  const asc=new Date(p);asc.setDate(p.getDate()+39);
+  const lpe=new Date(p);lpe.setDate(p.getDate()+50);
+  set.add(isoDate(lp));set.add(isoDate(asc));set.add(isoDate(lpe));
+  return set;
+}
+function isFerieDate(iso){return feriesFR(parseInt(iso.slice(0,4),10)).has(iso);}
 const MOIS_FR=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 let compagnons=["ALLANIC PATRICE","OLIVIER","GUYONVARCH PIERRE-MARIE","LE BIDRE ELISE","LE ROUX PIERRE-YVES","LAIR FLORIAN","LAURENT"];
 // Compagnons avec panier repas (détecté depuis Excel)
@@ -533,6 +559,7 @@ function updateMonthStatusBanner(){
     const jourIdx = date.getDay();
     if(jourIdx===0 || jourIdx===6) continue;
     const iso = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if(isFerieDate(iso)) continue;
     const s = userSaisies[iso];
     const ferieMatin = s && s.matin==='_FERIE';
     const ferieApm = s && s.apm==='_FERIE';
@@ -715,15 +742,15 @@ function renderMonthTable(){
     if(s&&s.panier==='OUI') panierCount++;
 
     const tr=document.createElement('tr');
-    tr.className=(isWE?'row-we':'row-saisie')+(isToday?' row-today':'');
     tr.dataset.iso=iso;
     tr.dataset.d=d;
 
-    // Detect ferie
-    const isFerie = s && (s.matin==='_FERIE' || s.apm==='_FERIE');
-    const rowClass = isWE ? 'row-we' : (isFerie ? 'row-ferie' : 'row-saisie');
+    // Detect ferie : saisie manuelle _FERIE, ou jour férié calculé automatiquement
+    // (sauf si une vraie saisie existe déjà ce jour-là, ex: travail exceptionnel un jour férié)
+    const hasRealEntry = s && ((s.matin && s.matin!=='_FERIE') || (s.apm && s.apm!=='_FERIE'));
+    const isFerie = !hasRealEntry && (isFerieDate(iso) || (s && (s.matin==='_FERIE' || s.apm==='_FERIE')));
 
-    if(s){
+    if(hasRealEntry){
       tr.innerHTML=`
         <td style="width:28px;padding:7px 4px;font-size:10px"><strong>${String(d).padStart(2,'0')}</strong></td>
         <td style="width:28px;padding:7px 4px"><span class="badge-wk">${JOURS[jourIdx]}</span></td>
@@ -731,6 +758,14 @@ function renderMonthTable(){
         <td><span class="ta">${s.apm||'<span class="empty-cell">—</span>'}</span></td>
         ${hasPan?`<td style="display:${hasPan?'':'none'}"><span class="tp ${(s.panier||'').toLowerCase()}">${s.panier||'—'}</span></td>`:''}
         <td style="font-size:10px;color:var(--muted2)">${s.obs||''}</td>`;
+    } else if(isFerie){
+      tr.innerHTML=`
+        <td style="width:28px;padding:7px 4px;font-size:10px"><strong>${String(d).padStart(2,'0')}</strong></td>
+        <td style="width:28px;padding:7px 4px"><span class="badge-wk">${JOURS[jourIdx]}</span></td>
+        <td><span class="tm">.Férié</span></td>
+        <td><span class="ta">.Férié</span></td>
+        ${hasPan?'<td class="empty-cell">—</td>':''}
+        <td style="font-size:10px;color:var(--muted2)">${(s&&s.obs)||''}</td>`;
     } else {
       tr.innerHTML=`
         <td style="width:28px;padding:7px 4px;font-size:10px">${String(d).padStart(2,'0')}</td>
@@ -796,6 +831,7 @@ function openEditRow(iso,d,tr){
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="save-inline" onclick="saveEditRow('${iso}')">✓ Enregistrer</button>
         <button class="cancel-inline" onclick="cancelEdit()">Annuler</button>
+        <button class="repeat-inline" onclick="repeatPrevious('${iso}')" title="Reprendre le dernier chantier saisi" aria-label="Répéter la ligne précédente">🔁</button>
       </div>
     </div>
   </td>`;
@@ -951,6 +987,39 @@ function cancelEdit(){
   const existing=document.querySelector('.edit-row');
   if(existing) existing.remove();
   editingDate=null;
+}
+
+// Retrouve la dernière saisie réelle avant `iso` (saute automatiquement WE, fériés, jours vides)
+function findPreviousEntry(iso){
+  const parts=iso.split('-');
+  const d=new Date(parseInt(parts[0]),parseInt(parts[1])-1,parseInt(parts[2]));
+  for(let i=0;i<60;i++){
+    d.setDate(d.getDate()-1);
+    const key=isoDate(d);
+    const s=userSaisies[key];
+    if(s && ((s.matin && s.matin!=='_FERIE') || (s.apm && s.apm!=='_FERIE'))) return s;
+  }
+  return null;
+}
+
+function repeatPrevious(iso){
+  const prev=findPreviousEntry(iso);
+  if(!prev){ toast("Aucune saisie précédente trouvée", 'err'); return; }
+  if(prev.matin){
+    const inList=CHANTIERS.includes(prev.matin);
+    document.getElementById('em_matin').value = inList ? prev.matin : '';
+    document.getElementById('em_chip_matin_txt').textContent = inList ? prev.matin : prev.matin+' ✎';
+    document.getElementById('em_chip_matin').style.display='flex';
+    document.getElementById('em_matin').parentElement.style.display='none';
+  }
+  if(prev.apm){
+    const inListA=CHANTIERS.includes(prev.apm);
+    document.getElementById('em_apm').value = inListA ? prev.apm : '';
+    document.getElementById('em_chip_apm_txt').textContent = inListA ? prev.apm : prev.apm+' ✎';
+    document.getElementById('em_chip_apm').style.display='flex';
+    document.getElementById('em_apm').parentElement.style.display='none';
+  }
+  toast('✓ Ligne précédente recopiée (' + prev.date + ')');
 }
 
 // ── RECENT ──

@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="JEHANNO">
 <meta name="theme-color" content="#0f1117">
 
-<title>JEHANNO — Leroux</title>
+<title>JEHANNO — Modèle Panier</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -71,7 +71,12 @@ nav h1{font-family:'Times New Roman',Times,serif;font-size:19px;font-weight:800;
 .sem-sel option{background:#1a1d27}
 .sem-chip{background:var(--surf3);border:1.5px solid var(--accent);border-radius:var(--rs);padding:8px 10px;font-size:11px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
 .sem-use-btn{width:100%;background:rgba(240,165,0,0.1);border:1.5px dashed var(--accent);border-radius:var(--rs);padding:8px 10px;font-family:'Times New Roman',Times,serif;font-size:10px;color:var(--accent);cursor:pointer;text-align:left;margin-top:3px}
+.sem-panier-toggle{display:flex;gap:8px;margin-top:4px}
+.sem-panier-btn{flex:1;background:var(--surf2);border:1.5px solid var(--border);border-radius:var(--rs);padding:9px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--muted);cursor:pointer;text-align:center;transition:all .15s}
+.sem-panier-btn.sel-oui{background:rgba(45,206,137,.1);border-color:var(--panier);color:var(--panier)}
+.sem-panier-btn.sel-non{background:rgba(224,92,92,.1);border-color:var(--danger);color:var(--danger)}
 
+/* LOGIN */
 
 .login-top{background:linear-gradient(160deg,var(--surf) 0%,var(--bg) 100%);padding:40px 24px 28px;border-bottom:1px solid var(--border)}
 .login-logo{font-family:'Times New Roman',Times,serif;font-size:28px;font-weight:800;color:var(--accent);margin-bottom:4px}
@@ -368,7 +373,6 @@ async function loadChantiers(){
         CHANTIERS = Object.values(val).filter(Boolean).sort();
       }
     }
-    // Rafraîchir les selects si déjà affichés
     fillSel('selMatin'); fillSel('selApm');
   }catch(e){ console.warn('Chantiers Firebase indisponibles', e); }
 }
@@ -455,7 +459,7 @@ const MOIS_FR=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août
 let compagnons=["ALLANIC PATRICE","OLIVIER","GUYONVARCH PIERRE-MARIE","LE BIDRE ELISE","LE ROUX PIERRE-YVES","LAIR FLORIAN","LAURENT"];
 // Compagnons avec panier repas (détecté depuis Excel)
 let hasPan = false;
-let hasPanier = false;
+let hasPanier = true;
 const AVEC_PANIER=["OLIVIER","GUYONVARCH PIERRE-MARIE","LAIR FLORIAN","LAURENT"];
 let db,currentUser=null,selMatin='',selApm='',selPanier='';
 let userSaisies={};
@@ -496,7 +500,7 @@ function renderLoginList(){
     const parts=c.split(' ');
     const first=parts[0].charAt(0).toUpperCase()+parts[0].slice(1).toLowerCase();
     const rest=parts.slice(1).join(' ');
-    return`<div class="comp-row" onclick="loginAs('LEROUX BENOIT', true)">
+    return`<div class="comp-row" onclick="loginAs('MODELE', true)">
       <div class="av">${initials(c)}</div>
       <div><div class="cn">${first}</div><div class="cs">${rest}</div></div>
     </div>`;
@@ -516,7 +520,7 @@ async function loginAs(name,save){
   document.getElementById('df').textContent=MOIS_FR[n.getMonth()]+' '+n.getFullYear();
   fillSel('selMatin'); fillSel('selApm');
   // Afficher ou masquer le panier selon le compagnon
-  hasPanier = false;
+  hasPanier = true;
   document.querySelector('.period-card.panier-card').style.display = hasPanier ? '' : 'none';
   showScreen('appScreen');
   await loadUserData();
@@ -1087,14 +1091,13 @@ function toast(msg,type=''){
 }
 
 // ── MA SEMAINE ──
-let semOffset = 0; // 0 = semaine en cours, -1 = semaine précédente, etc.
-// semaineData[iso] = {matin, apm}
+let semOffset = 0;
 let semaineData = {};
 
 function getMondayOfWeek(offset){
   const today = new Date();
-  const day = today.getDay(); // 0=dim
-  const diff = (day === 0 ? -6 : 1 - day); // lundi
+  const day = today.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
   const monday = new Date(today);
   monday.setDate(today.getDate() + diff + offset * 7);
   monday.setHours(0,0,0,0);
@@ -1120,13 +1123,15 @@ function renderSemaine(){
     const iso = isoOfDate(date);
     const jourNom = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi'][i];
     const existing = userSaisies[iso] || {};
-    // Préremplir avec données existantes
-    semaineData[iso] = { matin: existing.matin||'', apm: existing.apm||'' };
+    semaineData[iso] = { matin: existing.matin||'', apm: existing.apm||'', panier: existing.panier||'' };
     const isDone = !!(existing.matin || existing.apm);
 
     const card = document.createElement('div');
     card.className = 'sem-day' + (isDone?' sem-done':'');
     card.id = `sem-card-${iso}`;
+
+    const panierOuiCls = existing.panier==='OUI' ? ' sel-oui' : '';
+    const panierNonCls = existing.panier==='NON' ? ' sel-non' : '';
 
     card.innerHTML = `
       <div class="sem-day-header">
@@ -1153,6 +1158,13 @@ function renderSemaine(){
         <button class="sem-use-btn" id="sem-use-a-${iso}" style="display:none" onclick="semUseCustom('${iso}','apm')">+ Créer chantier</button>
         <div class="sem-chip" id="sem-chip-a-${iso}" style="display:${existing.apm?'flex':'none'}" onclick="semClear('${iso}','apm')">
           <span id="sem-chip-a-txt-${iso}">${existing.apm||''}</span><span class="clr">✕</span>
+        </div>
+      </div>
+      <div class="sem-row">
+        <div class="sem-row-lbl">🧺 Panier repas</div>
+        <div class="sem-panier-toggle">
+          <button class="sem-panier-btn${panierOuiCls}" id="sem-pan-oui-${iso}" onclick="semSetPanier('${iso}','OUI')">✓ OUI</button>
+          <button class="sem-panier-btn${panierNonCls}" id="sem-pan-non-${iso}" onclick="semSetPanier('${iso}','NON')">✗ NON</button>
         </div>
       </div>
       <div class="sem-row">
@@ -1240,6 +1252,14 @@ function semClear(iso, p){
   CHANTIERS.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o)});
 }
 
+function semSetPanier(iso, val){
+  semaineData[iso].panier = val;
+  const btnOui = document.getElementById(`sem-pan-oui-${iso}`);
+  const btnNon = document.getElementById(`sem-pan-non-${iso}`);
+  btnOui.className = 'sem-panier-btn' + (val==='OUI'?' sel-oui':'');
+  btnNon.className = 'sem-panier-btn' + (val==='NON'?' sel-non':'');
+}
+
 async function saveSemaine(){
   const monday = getMondayOfWeek(semOffset);
   const n = new Date();
@@ -1247,7 +1267,7 @@ async function saveSemaine(){
   for(let i=0; i<5; i++){
     const date = new Date(monday); date.setDate(monday.getDate()+i);
     const iso = isoOfDate(date);
-    const {matin, apm} = semaineData[iso]||{};
+    const {matin, apm, panier} = semaineData[iso]||{};
     if(!matin && !apm) continue;
     const existing = userSaisies[iso]||{};
     const obsVal = (document.getElementById(`sem-obs-${iso}`)?.value||'').trim();
@@ -1260,13 +1280,12 @@ async function saveSemaine(){
       jour: JOURS[date.getDay()],
       matin: matin||existing.matin||'',
       apm: apm||existing.apm||'',
-      panier: existing.panier||'',
+      panier: panier||existing.panier||'',
       obs: obsVal||existing.obs||'',
       time: n.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}),
       ts: Date.now()
     };
     await saveEntry(entry);
-    // Marquer comme saisi visuellement
     const card = document.getElementById(`sem-card-${iso}`);
     if(card){ card.classList.add('sem-done'); document.getElementById(`sem-done-${iso}`).textContent='✓ saisi'; }
     count++;
@@ -1274,7 +1293,7 @@ async function saveSemaine(){
   if(count>0){
     renderRecent();
     renderMonthTable();
-    toast(`✓ ${count} jour${count>1?'s':''} enregistré${count>1?'s':''}  !`);
+    toast(`✓ ${count} jour${count>1?'s':''} enregistré${count>1?'s':''} !`);
   } else {
     toast('Aucune saisie à enregistrer', 'warn');
   }
@@ -1287,7 +1306,7 @@ function changeSemaine(dir){
 
 // Lancer l'appli au chargement de la page
 document.addEventListener('DOMContentLoaded', async function() {
-  await loginAs('LEROUX BENOIT', true);
+  await loginAs('MODELE', true);
   initFirebase().catch(()=>setSyncStatus('offline'));
 });
 </script>
