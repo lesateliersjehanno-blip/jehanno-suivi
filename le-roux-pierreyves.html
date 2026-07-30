@@ -153,6 +153,9 @@ tr:last-child td{border-bottom:none}
 .tp.oui{color:var(--panier)}
 .tp.non{color:var(--danger)}
 .empty-cell{color:var(--muted);font-size:10px}
+.cell-late{background:var(--danger)}
+td.cell-late+td.cell-late{border-left:4px solid var(--bg)}
+.cell-late,.cell-late .empty-cell{color:#fff}
 /* Dt et Jr — fond clair texte noir */
 .badge-wk{background:#d8dce8;color:#1a1d27;padding:1px 4px;border-radius:3px;font-size:7px;font-weight:700;display:inline-block}
 /* WE — gris moyen */
@@ -699,6 +702,7 @@ function renderMonthTable(){
   document.getElementById('monthLbl').textContent=MOIS_FR[viewMonth]+' '+viewYear;
   const daysInMonth=new Date(viewYear,viewMonth+1,0).getDate();
   const today=new Date();
+  const todayMidnight=new Date(today.getFullYear(),today.getMonth(),today.getDate());
   const tbody=document.getElementById('monthBody');
   tbody.innerHTML='';
   let panierCount=0;
@@ -725,13 +729,15 @@ function renderMonthTable(){
     // (sauf si une vraie saisie existe déjà ce jour-là, ex: travail exceptionnel un jour férié)
     const hasRealEntry = s && ((s.matin && s.matin!=='_FERIE') || (s.apm && s.apm!=='_FERIE'));
     const isFerie = !hasRealEntry && (isFerieDate(iso) || (s && (s.matin==='_FERIE' || s.apm==='_FERIE')));
+    const isPast = date < todayMidnight;
+    const flagLate = isPast && !isWE && !isFerie;
 
     if(hasRealEntry){
       tr.innerHTML=`
         <td style="width:28px;padding:7px 4px;font-size:10px"><strong>${String(d).padStart(2,'0')}</strong></td>
         <td style="width:28px;padding:7px 4px"><span class="badge-wk">${JOURS[jourIdx]}</span></td>
-        <td><span class="tm">${s.matin||'<span class="empty-cell">—</span>'}</span></td>
-        <td><span class="ta">${s.apm||'<span class="empty-cell">—</span>'}</span></td>
+        <td class="${(!s.matin&&flagLate)?'cell-late':''}"><span class="tm">${s.matin||'<span class="empty-cell">—</span>'}</span></td>
+        <td class="${(!s.apm&&flagLate)?'cell-late':''}"><span class="ta">${s.apm||'<span class="empty-cell">—</span>'}</span></td>
         ${hasPan?`<td style="display:${hasPan?'':'none'}"><span class="tp ${(s.panier||'').toLowerCase()}">${s.panier||'—'}</span></td>`:''}
         <td style="font-size:10px;color:var(--muted2)">${s.obs||''}</td>`;
     } else if(isFerie){
@@ -746,8 +752,8 @@ function renderMonthTable(){
       tr.innerHTML=`
         <td style="width:28px;padding:7px 4px;font-size:10px">${String(d).padStart(2,'0')}</td>
         <td style="width:28px;padding:7px 4px"><span class="badge-wk">${JOURS[jourIdx]}</span></td>
-        <td class="empty-cell">—</td>
-        <td class="empty-cell">—</td>
+        <td class="empty-cell${flagLate?' cell-late':''}">—</td>
+        <td class="empty-cell${flagLate?' cell-late':''}">—</td>
         ${hasPan?'<td class="empty-cell">—</td>':''}
         <td></td>`;
     }
