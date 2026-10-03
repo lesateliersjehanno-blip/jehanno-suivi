@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEHANNO — Saisie des absences</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1c2033;color:#eef0f8;font-family:'DM Mono',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 48px}
+.logo{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#f0a500;margin-bottom:6px;text-align:center}
+.sub{font-size:11px;color:#6b7090;letter-spacing:2px;text-transform:uppercase;margin-bottom:26px;text-align:center}
+.wrap{width:100%;max-width:520px}
+.card{background:#252a3d;border:1.5px solid rgba(255,255,255,0.1);border-radius:14px;padding:18px;margin-bottom:18px}
+.label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7090;margin:14px 0 7px}
+.label:first-child{margin-top:0}
+.two .label{margin-top:14px}
+input[type=text],input[type=date],select{width:100%;background:#1c2033;border:1.5px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px;color:#eef0f8;font-family:'DM Mono',monospace;font-size:13px;outline:none;color-scheme:dark}
+input:focus,select:focus{border-color:#f0a500}
+.two{display:flex;gap:10px}
+.two>div{flex:1;min-width:0}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;background:#1c2033;border:1.5px solid rgba(255,255,255,0.15);border-radius:8px;padding:10px 4px;color:#eef0f8;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer}
+.seg button.on{background:#f0a500;border-color:#f0a500;color:#1c2033;font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;background:#1c2033;border:1.5px solid rgba(255,255,255,0.15);border-radius:20px;overflow:hidden}
+.chip.on{background:#f0a500;border-color:#f0a500}
+.chip .t{background:none;border:none;color:#eef0f8;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;cursor:pointer}
+.chip.on .t{color:#1c2033;font-weight:500}
+.chip .x{background:none;border:none;border-left:1px solid rgba(255,255,255,0.15);color:#e05c5c;font-size:12px;padding:8px 9px;cursor:pointer;display:none}
+.gerer .chip .x{display:block}
+.hint{font-size:11px;color:#6b7090;line-height:1.5}
+.addrow{display:flex;gap:8px;margin-top:10px}
+.addrow input{flex:1}
+.small{background:#2e3450;border:none;border-radius:8px;color:#eef0f8;font-family:'DM Mono',monospace;font-size:12px;padding:10px 12px;cursor:pointer;white-space:nowrap}
+.small:hover{background:#3a4162}
+.link{background:none;border:none;color:#8890b0;font-family:'DM Mono',monospace;font-size:11px;text-decoration:underline;cursor:pointer;margin-top:10px}
+.main{width:100%;margin-top:18px;background:#f0a500;border:none;border-radius:10px;color:#1c2033;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;padding:14px;cursor:pointer}
+.main:disabled{opacity:.4;cursor:not-allowed}
+.recap{font-size:11px;color:#8890b0;margin-top:12px;line-height:1.5;min-height:16px}
+.msg{font-size:12px;margin-top:12px;line-height:1.5;display:none}
+.msg.ok{display:block;color:#2dce89}
+.msg.err{display:block;color:#e05c5c}
+.conf{display:none;margin-top:14px;border:1.5px solid #f0a500;border-radius:10px;padding:12px;font-size:12px;line-height:1.6}
+.conf ul{margin:6px 0 10px 18px;color:#8890b0;font-size:11px}
+.conf .two button{flex:1}
+.h2{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;color:#f0a500;margin-bottom:12px}
+.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid rgba(255,255,255,0.08)}
+.item:first-of-type{border-top:none}
+.item .i{flex:1;min-width:0}
+.item .n{font-size:13px}
+.item .d{font-size:11px;color:#8890b0;margin-top:3px}
+.item .m{color:#f0a500}
+.del{background:none;border:1.5px solid rgba(224,92,92,.5);border-radius:8px;color:#e05c5c;font-family:'DM Mono',monospace;font-size:11px;padding:7px 9px;cursor:pointer;flex-shrink:0}
+.empty{font-size:11px;color:#6b7090;padding:6px 0}
+.xl{background:none;border:1.5px solid rgba(45,206,137,.5);border-radius:8px;color:#2dce89;font-family:'DM Mono',monospace;font-size:11px;padding:7px 9px;cursor:pointer;flex-shrink:0}
+.main.vert{background:#2dce89;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="logo">⚒ JEHANNO</div>
+<div class="sub">Suivi Temps — Saisie des absences</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="label">Compagnon</div>
+    <input type="text" id="rech" placeholder="Rechercher un nom…" oninput="fillCompagnons()" autocomplete="off" style="margin-bottom:8px">
+    <select id="comp" onchange="majRecap()"><option value="">Chargement…</option></select>
+
+    <div class="two">
+      <div><div class="label">Du</div><input type="date" id="du" onchange="onDu()"></div>
+      <div><div class="label">Au</div><input type="date" id="au" onchange="majRecap()"></div>
+    </div>
+
+    <div class="label">Période</div>
+    <div class="seg" id="seg">
+      <button type="button" data-p="jour" class="on" onclick="setPeriode('jour')">Journée</button>
+      <button type="button" data-p="matin" onclick="setPeriode('matin')">Matin</button>
+      <button type="button" data-p="apm" onclick="setPeriode('apm')">Après-midi</button>
+    </div>
+
+    <div class="label">Motif</div>
+    <div id="motifZone">
+      <div class="chips" id="chips"></div>
+      <div class="addrow">
+        <input type="text" id="newMotif" placeholder="Nouveau motif (ex : Maladie)" maxlength="40" onkeydown="if(event.key==='Enter')addMotif()">
+        <button type="button" class="small" onclick="addMotif()">+ Ajouter</button>
+      </div>
+      <button type="button" class="link" id="gererBtn" onclick="toggleGerer()">Supprimer des motifs</button>
+    </div>
+
+    <div class="label">Observation (facultatif)</div>
+    <input type="text" id="obs" maxlength="120" placeholder="Ex : prévenu par téléphone">
+
+    <div class="recap" id="recap"></div>
+    <div class="conf" id="conf"></div>
+    <button type="button" class="main" id="go" onclick="enregistrer(false)" disabled>Enregistrer l'absence</button>
+    <div class="msg" id="msg"></div>
+  </div>
+
+  <div class="card">
+    <div class="h2">Absences enregistrées</div>
+    <div id="liste"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card">
+    <div class="h2">Archiver un mois</div>
+    <div class="hint">Retire les absences du mois de la liste ci-dessus et les range dans un fichier Excel du dossier « archives » (c'est le lanceur qui écrit le fichier). Les fiches des compagnons ne sont pas modifiées.</div>
+    <div class="label">Mois à archiver</div>
+    <input type="month" id="moisArch" onchange="majArch()">
+    <div class="recap" id="archRecap"></div>
+    <button type="button" class="main vert" id="archBtn" onclick="archiver()" disabled>Archiver le mois</button>
+    <div class="msg" id="archMsg"></div>
+    <div class="label" style="margin-top:20px">Mois archivés</div>
+    <div id="archListe"><div class="empty">Chargement…</div></div>
+  </div>
+</div>
+
+<script>
+// ══ FIREBASE CONFIG (identique aux fiches compagnons) ══
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyASl9qnu-poSZqp_9eUoDK0YbbjVYAnnz0",
+  authDomain: "oj-chantier.firebaseapp.com",
+  databaseURL: "https://oj-chantier-7ed1d-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "oj-chantier",
+  storageBucket: "oj-chantier.firebasestorage.app",
+  messagingSenderId: "212267939056",
+  appId: "1:212267939056:web:bf470ad83a6185671bfe35"
+};
+const JOURS=['DIM','LUN','MAR','MER','JEU','VEN','SAM'];
+const MAX_JOURS=62;
+
+const MOIS_FR=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+let db=null, COMPAGNONS=[], MOTIFS={}, ABSENCES={}, ARCHIVES={}, periode='jour', motifSel='', gerer=false;
+
+const $=id=>document.getElementById(id);
+function esc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function userKey(n){return n.replace(/[^a-zA-Z0-9]/g,'_');}
+function isoDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function parseISO(s){const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function frDate(iso){const p=iso.split('-');return `${p[2]}/${p[1]}/${p[0]}`;}
+
+// ── Jours fériés français (même calcul que les fiches) ──
+function paquesDate(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),
+        g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,
+        l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+        mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;
+  return new Date(y,mo-1,da);
+}
+const _feries={};
+function feriesFR(y){
+  if(_feries[y]) return _feries[y];
+  const p=paquesDate(y), plus=n=>{const d=new Date(p);d.setDate(d.getDate()+n);return isoDate(d);};
+  return _feries[y]=new Set([`${y}-01-01`,`${y}-05-01`,`${y}-05-08`,`${y}-07-14`,`${y}-08-15`,
+    `${y}-11-01`,`${y}-11-11`,`${y}-12-25`,plus(1),plus(39),plus(50)]);
+}
+function isFerieDate(iso){return feriesFR(parseInt(iso.slice(0,4),10)).has(iso);}
+
+// Jours ouvrés (hors week-ends et fériés) entre deux dates incluses
+function joursOuvres(du,au){
+  const out=[]; if(!du||!au) return out;
+  const fin=parseISO(au);
+  for(let d=parseISO(du), n=0; d<=fin && n<400; d.setDate(d.getDate()+1), n++){
+    const j=d.getDay(), iso=isoDate(d);
+    if(j===0||j===6||isFerieDate(iso)) continue;
+    out.push(iso);
+  }
+  return out;
+}
+
+// ── Affichage ──
+function fillCompagnons(){
+  const q=$('rech').value.trim().toLowerCase(), sel=$('comp'), cur=sel.value;
+  const list=q?COMPAGNONS.filter(n=>n.toLowerCase().includes(q)):COMPAGNONS;
+  sel.innerHTML='<option value="">— Sélectionner —</option>'+list.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  if(list.includes(cur)) sel.value=cur; else if(q&&list.length===1) sel.value=list[0];
+  majRecap();
+}
+function setPeriode(p){
+  periode=p;
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  majRecap();
+}
+function renderMotifs(){
+  const keys=Object.keys(MOTIFS).sort((a,b)=>MOTIFS[a].localeCompare(MOTIFS[b],'fr'));
+  if(motifSel && !Object.values(MOTIFS).includes(motifSel)) motifSel='';
+  $('motifZone').classList.toggle('gerer',gerer);
+  $('gererBtn').textContent=gerer?'Terminer':'Supprimer des motifs';
+  $('gererBtn').style.display=keys.length?'':'none';
+  $('chips').innerHTML=keys.length?keys.map(k=>`<span class="chip${MOTIFS[k]===motifSel?' on':''}">
+      <button type="button" class="t" data-k="${esc(k)}">${esc(MOTIFS[k])}</button>
+      <button type="button" class="x" data-del="${esc(k)}" title="Supprimer ce motif">✕</button></span>`).join('')
+    :'<div class="hint">Aucun motif pour l\'instant : tapez-en un ci-dessous puis « + Ajouter ».</div>';
+  majRecap();
+}
+$('chips').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.del){ delMotif(b.dataset.del); return; }
+  const m=MOTIFS[b.dataset.k]; motifSel=(motifSel===m)?'':m; renderMotifs();
+});
+function toggleGerer(){gerer=!gerer;renderMotifs();}
+
+function onDu(){ if(!$('au').value || $('au').value<$('du').value) $('au').value=$('du').value; majRecap(); }
+function majRecap(){
+  const du=$('du').value, au=$('au').value, n=$('comp').value;
+  let txt='', ok=false;
+  $('conf').style.display='none';
+  if(du&&au&&au<du) txt='⚠️ La date de fin est avant la date de début.';
+  else if(du&&au){
+    const j=joursOuvres(du,au);
+    if(!j.length) txt='⚠️ Aucun jour ouvré sur cette période (week-end ou férié).';
+    else if(j.length>MAX_JOURS) txt=`⚠️ Période trop longue (${j.length} jours ouvrés, maximum ${MAX_JOURS}).`;
+    else{
+      const lib=periode==='jour'?'journée':periode==='matin'?'matin':'après-midi';
+      txt=`${j.length} jour${j.length>1?'s':''} ouvré${j.length>1?'s':''} · ${lib} · week-ends et fériés ignorés`;
+      ok=!!(n&&motifSel&&db);
+    }
+  }
+  $('recap').textContent=txt;
+  $('go').disabled=!ok;
+}
+function showMsg(t,type){const m=$('msg');m.textContent=t;m.className='msg '+(type||'');}
+
+// ── Motifs (liste libre, stockée dans Firebase) ──
+async function addMotif(){
+  const v=$('newMotif').value.trim().replace(/\s+/g,' ');
+  if(!v||!db) return;
+  const exist=Object.values(MOTIFS).find(m=>m.toLowerCase()===v.toLowerCase());
+  if(exist){ motifSel=exist; $('newMotif').value=''; renderMotifs(); return; }
+  try{
+    await db.ref('config/motifsAbsence').push(v);
+    motifSel=v; $('newMotif').value='';
+    renderMotifs();
+  }catch(e){ showMsg('Impossible d\'ajouter le motif (connexion ?).','err'); }
+}
+async function delMotif(k){
+  try{ await db.ref('config/motifsAbsence/'+k).remove(); }
+  catch(e){ showMsg('Impossible de supprimer le motif (connexion ?).','err'); }
+}
+
+// ── Enregistrement ──
+function demis(){return periode==='jour'?['matin','apm']:[periode];}
+
+async function enregistrer(force){
+  const name=$('comp').value, du=$('du').value, au=$('au').value, obs=$('obs').value.trim(), motif=motifSel;
+  const jours=joursOuvres(du,au);
+  if(!name||!motif||!jours.length||jours.length>MAX_JOURS||!db) return;
+  const key=userKey(name), parts=demis();
+  $('go').disabled=true; showMsg('','');
+  try{
+    const snap=await db.ref('saisies/'+key).once('value');
+    const exist=snap.exists()?snap.val():{};
+
+    // Demi-journées déjà remplies par le compagnon avec autre chose que ce motif
+    const conflits=[];
+    jours.forEach(iso=>{
+      const s=exist[iso]; if(!s) return;
+      parts.forEach(p=>{ if(s[p] && s[p]!==motif && s[p]!=='_FERIE') conflits.push(`${frDate(iso)} ${p==='matin'?'matin':'après-midi'} : ${s[p]}`); });
+    });
+    if(conflits.length && !force){
+      const c=$('conf');
+      c.innerHTML=`<strong>Déjà saisi sur cette période :</strong><ul>${conflits.slice(0,12).map(x=>`<li>${esc(x)}</li>`).join('')}${conflits.length>12?`<li>… et ${conflits.length-12} autre(s)</li>`:''}</ul>
+        Remplacer par « ${esc(motif)} » ?
+        <div class="two" style="margin-top:10px"><button type="button" class="small" onclick="majRecap()">Annuler</button>
+        <button type="button" class="small" style="background:#f0a500;color:#1c2033" onclick="enregistrer(true)">Remplacer</button></div>`;
+      c.style.display='block';
+      $('go').disabled=false;
+      return;
+    }
+    $('conf').style.display='none';
+
+    const now=new Date(), ts=Date.now(), updates={};
+    const absId=db.ref('absences').push().key;
+    jours.forEach(iso=>{
+      const d=parseISO(iso), old=exist[iso]||{};
+      const e={
+        compagnon:name, date:d.toLocaleDateString('fr-FR'), dateISO:iso,
+        year:d.getFullYear(), month:d.getMonth(), day:d.getDate(), jour:JOURS[d.getDay()],
+        matin:old.matin==='_FERIE'?'':(old.matin||''), apm:old.apm==='_FERIE'?'':(old.apm||''),
+        panier:old.panier||'', obs:obs||old.obs||'',
+        time:now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}), ts:ts,
+        absence:true, absenceId:absId
+      };
+      if(old.lockM) e.lockM=true; if(old.lockA) e.lockA=true;
+      parts.forEach(p=>{ e[p]=motif; e[p==='matin'?'lockM':'lockA']=true; });
+      if(periode==='jour') e.panier='';
+      updates[`saisies/${key}/${iso}`]=e;
+    });
+    updates[`absences/${absId}`]={compagnon:name,key:key,du:jours[0],au:jours[jours.length-1],
+      periode:periode,motif:motif,obs:obs,jours:jours,ts:ts};
+    await db.ref().update(updates);
+
+    showMsg(`✓ Absence enregistrée dans la fiche de ${name} (${jours.length} jour${jours.length>1?'s':''}).`,'ok');
+    $('obs').value='';
+  }catch(e){
+    showMsg('Enregistrement impossible — vérifiez la connexion internet.','err');
+  }
+  majRecap();
+}
+
+// ── Liste des absences ──
+function renderListe(){
+  const ids=Object.keys(ABSENCES).filter(id=>!toutArchive(ABSENCES[id])).sort((a,b)=>(ABSENCES[b].du||'').localeCompare(ABSENCES[a].du||'')||(ABSENCES[b].ts||0)-(ABSENCES[a].ts||0)).slice(0,60);
+  if(!ids.length){ $('liste').innerHTML='<div class="empty">Aucune absence enregistrée.</div>'; return; }
+  $('liste').innerHTML=ids.map(id=>{
+    const a=ABSENCES[id], n=(a.jours||[]).length;
+    const dates=a.du===a.au?frDate(a.du):`${frDate(a.du)} → ${frDate(a.au)}`;
+    const lib=a.periode==='matin'?' · matin':a.periode==='apm'?' · après-midi':'';
+    return `<div class="item"><div class="i"><div class="n">${esc(a.compagnon)}</div>
+      <div class="d"><span class="m">${esc(a.motif)}</span> · ${dates}${lib} · ${n} j${a.obs?' · '+esc(a.obs):''}</div></div>
+      <button type="button" class="del" data-id="${esc(id)}">Supprimer</button></div>`;
+  }).join('');
+}
+$('liste').addEventListener('click',e=>{
+  const b=e.target.closest('button.del'); if(!b) return;
+  if(b.dataset.sure){ supprimer(b.dataset.id); return; }
+  b.dataset.sure='1'; b.textContent='Confirmer ?';
+  setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent='Supprimer'; } },4000);
+});
+
+// Retire l'absence de la fiche du compagnon (uniquement là où le motif est toujours en place)
+async function supprimer(id){
+  const a=ABSENCES[id]; if(!a||!db) return;
+  try{
+    const snap=await db.ref('saisies/'+a.key).once('value');
+    const exist=snap.exists()?snap.val():{};
+    const parts=a.periode==='jour'?['matin','apm']:[a.periode], updates={};
+    (a.jours||[]).forEach(iso=>{
+      const s=exist[iso]; if(!s) return;
+      const e=Object.assign({},s); let touche=false;
+      parts.forEach(p=>{ if(e[p]===a.motif){ e[p]=''; delete e[p==='matin'?'lockM':'lockA']; touche=true; } });
+      if(!touche) return;
+      if(!e.matin && !e.apm){ updates[`saisies/${a.key}/${iso}`]=null; return; }
+      if(!e.lockM && !e.lockA){ delete e.absence; delete e.absenceId; }
+      if(a.obs && e.obs===a.obs) e.obs='';
+      updates[`saisies/${a.key}/${iso}`]=e;
+    });
+    updates[`absences/${id}`]=null;
+    await db.ref().update(updates);
+    showMsg('✓ Absence supprimée de la fiche de '+a.compagnon+'.','ok');
+  }catch(e){ showMsg('Suppression impossible — vérifiez la connexion internet.','err'); }
+}
+
+// ── Archivage mensuel (fichier Excel) ──
+function moisDe(a){return [...new Set((a.jours||[]).map(j=>j.slice(0,7)))];}
+function toutArchive(a){const m=moisDe(a);return m.length>0&&m.every(x=>a.archives&&a.archives[x]);}
+function libMois(ym){const p=ym.split('-');return MOIS_FR[parseInt(p[1],10)-1]+' '+p[0];}
+function libPeriode(p){return p==='matin'?'Matin':p==='apm'?'Après-midi':'Journée';}
+
+// Lignes (une par jour d'absence) du mois, pas encore archivées
+function lignesNouvelles(ym){
+  const rows=[], ids=[];
+  Object.keys(ABSENCES).forEach(id=>{
+    const a=ABSENCES[id];
+    if(a.archives&&a.archives[ym]) return;
+    const js=(a.jours||[]).filter(j=>j.slice(0,7)===ym);
+    if(!js.length) return;
+    ids.push(id);
+    js.forEach(j=>rows.push({c:a.compagnon||'',d:j,p:a.periode||'jour',m:a.motif||'',o:a.obs||''}));
+  });
+  return {rows,ids};
+}
+function trier(rows){return rows.slice().sort((x,y)=>x.c.localeCompare(y.c,'fr')||x.d.localeCompare(y.d));}
+
+function majArch(){
+  const ym=$('moisArch').value, b=$('archBtn');
+  delete b.dataset.sure; b.textContent="Archiver le mois";
+  if(!ym){ $('archRecap').textContent=''; b.disabled=true; return; }
+  const n=lignesNouvelles(ym).rows.length, deja=ARCHIVES[ym]?(ARCHIVES[ym].rows||[]).length:0;
+  $('archRecap').textContent=n?`${n} jour${n>1?'s':''} d'absence à archiver pour ${libMois(ym)}`+(deja?` (s'ajoutent aux ${deja} déjà archivés)`:''):
+    (deja?`${libMois(ym)} est déjà archivé — le fichier est dans le dossier « archives » (bouton « Excel » ci-dessous pour une copie).`:`Aucune absence saisie pour ${libMois(ym)}.`);
+  b.disabled=!n||!db;
+}
+function archMsg(t,type){const m=$('archMsg');m.textContent=t;m.className='msg '+(type||'');}
+
+async function archiver(){
+  const ym=$('moisArch').value, b=$('archBtn'); if(!ym||!db) return;
+  if(!b.dataset.sure){
+    b.dataset.sure='1'; b.textContent='Confirmer l\'archivage de '+libMois(ym)+' ?';
+    setTimeout(()=>{ if(b.dataset.sure) majArch(); },5000);
+    return;
+  }
+  const {rows,ids}=lignesNouvelles(ym); if(!rows.length){ majArch(); return; }
+  const tout=trier(((ARCHIVES[ym]&&ARCHIVES[ym].rows)||[]).concat(rows));
+  b.disabled=true; archMsg('','');
+  try{
+    const updates={}; updates['absencesArchive/'+ym]={ts:Date.now(),rows:tout};
+    ids.forEach(id=>{ updates[`absences/${id}/archives/${ym}`]=true; });
+    await db.ref().update(updates);
+    archMsg(`✓ ${libMois(ym)} archivé. Le lanceur range le fichier Excel dans le dossier « archives » : en moins d'une minute s'il est ouvert, sinon à sa prochaine ouverture.`,'ok');
+  }catch(e){ archMsg('Archivage impossible — vérifiez la connexion internet.','err'); }
+  majArch();
+}
+
+// Crée le fichier Excel (ou un CSV lisible par Excel si la librairie n'a pas pu se charger)
+function exporter(ym,rows){
+  const vus=new Set(); rows=rows.filter(r=>{const k=[r.c,r.d,r.p,r.m].join('\u0001'); if(vus.has(k)) return false; vus.add(k); return true;});
+  const jr=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const detail=[['Compagnon','Date','Jour','Période','Motif','Observation']]
+    .concat(trier(rows).map(r=>[r.c,frDate(r.d),jr[parseISO(r.d).getDay()],libPeriode(r.p),r.m,r.o||'']));
+  const tot={};
+  rows.forEach(r=>{ const k=r.c+'\u0001'+r.m; tot[k]=(tot[k]||0)+(r.p==='jour'?1:0.5); });
+  const recap=[['Compagnon','Motif','Nombre de jours']]
+    .concat(Object.keys(tot).sort((a,b)=>a.localeCompare(b,'fr')).map(k=>{const p=k.split('\u0001');return [p[0],p[1],tot[k]];}));
+  const base=`ABSENCES_${ym}_${MOIS_FR[parseInt(ym.slice(5),10)-1]}`;
+  if(window.XLSX){
+    const wb=XLSX.utils.book_new();
+    const w1=XLSX.utils.aoa_to_sheet(detail); w1['!cols']=[{wch:30},{wch:12},{wch:11},{wch:12},{wch:24},{wch:40}];
+    const w2=XLSX.utils.aoa_to_sheet(recap);  w2['!cols']=[{wch:30},{wch:24},{wch:16}];
+    XLSX.utils.book_append_sheet(wb,w1,'Absences');
+    XLSX.utils.book_append_sheet(wb,w2,'Récap');
+    XLSX.writeFile(wb,base+'.xlsx');
+    return base+'.xlsx';
+  }
+  const csv='﻿'+detail.map(l=>l.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=base+'.csv'; document.body.appendChild(a); a.click(); a.remove();
+  return base+'.csv';
+}
+
+function renderArchives(){
+  const ks=Object.keys(ARCHIVES).sort().reverse();
+  $('archListe').innerHTML=ks.length?ks.map(ym=>{
+    const n=(ARCHIVES[ym].rows||[]).length;
+    return `<div class="item"><div class="i"><div class="n">${esc(libMois(ym))}</div><div class="d">${n} jour${n>1?'s':''} d'absence</div></div>
+      <button type="button" class="xl" data-ym="${esc(ym)}">Excel</button></div>`;
+  }).join(''):'<div class="empty">Aucun mois archivé.</div>';
+}
+$('archListe').addEventListener('click',e=>{
+  const b=e.target.closest('button.xl'); if(!b||!ARCHIVES[b.dataset.ym]) return;
+  exporter(b.dataset.ym,ARCHIVES[b.dataset.ym].rows||[]);
+});
+
+// ── Démarrage ──
+async function init(){
+  const today=isoDate(new Date());
+  $('du').value=today; $('au').value=today;
+  $('moisArch').value=today.slice(0,7);
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db=firebase.database();
+  }catch(e){
+    $('comp').innerHTML='<option value="">Connexion impossible</option>';
+    showMsg('Connexion à la base impossible — vérifiez internet puis rechargez la page.','err');
+    $('liste').innerHTML='<div class="empty">—</div>';
+    return;
+  }
+  db.ref('compagnons').on('value',snap=>{
+    const v=snap.val()||{};
+    COMPAGNONS=Object.values(v).filter(c=>c&&c.name).map(c=>c.name).sort((a,b)=>a.localeCompare(b,'fr'));
+    fillCompagnons();
+  },()=>{ $('comp').innerHTML='<option value="">Liste indisponible</option>'; });
+  db.ref('config/motifsAbsence').on('value',snap=>{
+    const v=snap.val()||{}; MOTIFS={};
+    Object.keys(v).forEach(k=>{ if(typeof v[k]==='string'&&v[k].trim()) MOTIFS[k]=v[k].trim(); });
+    renderMotifs();
+  });
+  db.ref('absencesArchive').on('value',snap=>{ ARCHIVES=snap.val()||{}; renderArchives(); majArch(); },
+    ()=>{ $('archListe').innerHTML='<div class="empty">Liste indisponible.</div>'; });
+  db.ref('absences').on('value',snap=>{ ABSENCES=snap.val()||{}; renderListe(); majArch(); },
+    ()=>{ $('liste').innerHTML='<div class="empty">Liste indisponible.</div>'; });
+}
+init();
+</script>
+</body>
+</html>
