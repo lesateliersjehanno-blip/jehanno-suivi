@@ -588,6 +588,26 @@ function updateMonthStatusBanner(){
 
 async function saveEntry(entry){
   const key=userKey(currentUser);
+  // Absence saisie par le bureau : les demi-journées verrouillées ne sont pas modifiables
+  let verrou=userSaisies[entry.dateISO]||null;
+  if(db){
+    try{
+      const sn=await Promise.race([db.ref(`saisies/${key}/${entry.dateISO}`).once('value'),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),2500))]);
+      verrou=sn.exists()?sn.val():null;
+    }catch(e){}
+  }
+  delete entry.lockM; delete entry.lockA; delete entry.absence; delete entry.absenceId;
+  if(verrou&&(verrou.lockM||verrou.lockA)){
+    let bloque=false;
+    if(verrou.lockM){ if((entry.matin||'')!==(verrou.matin||'')) bloque=true; entry.matin=verrou.matin||''; entry.lockM=true; }
+    if(verrou.lockA){ if((entry.apm||'')!==(verrou.apm||'')) bloque=true; entry.apm=verrou.apm||''; entry.lockA=true; }
+    if(verrou.lockM&&verrou.lockA){
+      if((entry.panier||'')!==(verrou.panier||'')||(entry.obs||'')!==(verrou.obs||'')) bloque=true;
+      entry.panier=verrou.panier||''; entry.obs=verrou.obs||'';
+    }
+    entry.absence=true; if(verrou.absenceId) entry.absenceId=verrou.absenceId;
+    if(bloque) setTimeout(()=>toast('🔒 Absence saisie par le bureau — non modifiable','warn'),200);
+  }
   userSaisies[entry.dateISO]=entry;
   localStorage.setItem('oj_saisies_'+key,JSON.stringify(userSaisies));
   if(db){
@@ -767,7 +787,7 @@ function renderMonthTable(){
         <td class="${(!s.matin&&flagLate)?'cell-late':''}"><span class="tm">${s.matin||'<span class="empty-cell">—</span>'}</span></td>
         <td class="${(!s.apm&&flagLate)?'cell-late':''}"><span class="ta">${s.apm||'<span class="empty-cell">—</span>'}</span></td>
         ${hasPan?`<td style="display:${hasPan?'':'none'}"><span class="tp ${(s.panier||'').toLowerCase()}">${s.panier||'—'}</span></td>`:''}
-        <td style="font-size:10px;color:var(--muted2)">${s.obs||''}</td>`;
+        <td style="font-size:10px;color:var(--muted2)">${(s.lockM||s.lockA)?'🔒 ':''}${s.obs||''}</td>`;
     } else if(isFerie){
       tr.innerHTML=`
         <td style="width:28px;padding:7px 4px;font-size:10px"><strong>${String(d).padStart(2,'0')}</strong></td>
@@ -786,7 +806,8 @@ function renderMonthTable(){
         <td></td>`;
     }
     tr.className=(isWE?'row-we':isFerie?'row-ferie':'row-saisie')+(isToday?' row-today':'');
-    if(!isWE && !isFerie) tr.onclick=()=>openEditRow(iso,d,tr);
+    if(s&&s.lockM&&s.lockA) tr.onclick=()=>toast('🔒 Absence saisie par le bureau — non modifiable','warn');
+    else if(!isWE && !isFerie) tr.onclick=()=>openEditRow(iso,d,tr);
     tbody.appendChild(tr);
   }
 
