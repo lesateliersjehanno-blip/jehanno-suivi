@@ -209,11 +209,20 @@ function joursOuvres(du,au){
   return out;
 }
 
+// ── Noms : dans "NOM PRENOM", le dernier mot est le prénom
+// (même convention que index.html, compatible avec les prénoms composés).
+function prenomDe(n){ const p=(n||'').trim().split(/\s+/); return p.length?p[p.length-1]:''; }
+function nomDe(n){ const p=(n||'').trim().split(/\s+/); return p.slice(0,-1).join(' '); }
+function triPrenom(a,b){
+  return prenomDe(a).localeCompare(prenomDe(b),'fr') || nomDe(a).localeCompare(nomDe(b),'fr');
+}
+function affichePrenomNom(n){ const nom=nomDe(n); return nom?prenomDe(n)+' '+nom:(n||''); }
+
 // ── Affichage ──
 function fillCompagnons(){
   const q=$('rech').value.trim().toLowerCase(), sel=$('comp'), cur=sel.value;
   const list=q?COMPAGNONS.filter(n=>n.toLowerCase().includes(q)):COMPAGNONS;
-  sel.innerHTML='<option value="">— Sélectionner —</option>'+list.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  sel.innerHTML='<option value="">— Sélectionner —</option>'+list.slice().sort(triPrenom).map(n=>`<option value="${esc(n)}">${esc(affichePrenomNom(n))}</option>`).join('');
   if(list.includes(cur)) sel.value=cur; else if(q&&list.length===1) sel.value=list[0];
   majRecap();
 }
@@ -491,7 +500,7 @@ async function init(){
   }
   db.ref('compagnons').on('value',snap=>{
     const v=snap.val()||{};
-    COMPAGNONS=Object.values(v).filter(c=>c&&c.name).map(c=>c.name).sort((a,b)=>a.localeCompare(b,'fr'));
+    COMPAGNONS=Object.values(v).filter(c=>c&&c.name).map(c=>c.name).sort(triPrenom);
     fillCompagnons();
   },()=>{ $('comp').innerHTML='<option value="">Liste indisponible</option>'; });
   db.ref('config/motifsAbsence').on('value',snap=>{
