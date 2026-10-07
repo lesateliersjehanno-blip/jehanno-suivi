@@ -13,30 +13,34 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#1c2033;color:#eef0f8;font-family:'DM Mono',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-.logo{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#f0a500;margin-bottom:6px;text-align:center}
-.sub{font-size:11px;color:#6b7090;letter-spacing:2px;text-transform:uppercase;margin-bottom:40px;text-align:center}
-.label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7090;margin-bottom:12px}
+body{color-scheme:light;background:#f2e9d8;color:#2b2a26;font-family:'DM Mono',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.logo{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#b5790a;margin-bottom:6px;text-align:center}
+.sub{font-size:11px;color:#8a7f6b;letter-spacing:2px;text-transform:uppercase;margin-bottom:40px;text-align:center}
+.label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#8a7f6b;margin-bottom:12px}
 .filter-bar{display:flex;align-items:center;gap:10px;width:100%;max-width:360px;margin-bottom:14px}
-.filter-bar .flabel{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#6b7090;flex-shrink:0}
-.filter-bar select{flex:1;background:#252a3d;border:1.5px solid rgba(255,255,255,0.15);border-radius:8px;padding:9px 10px;color:#eef0f8;font-family:'DM Mono',monospace;font-size:12px;outline:none}
-.filter-bar select:focus{border-color:#f0a500}
+.filter-bar .flabel{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#8a7f6b;flex-shrink:0}
+.filter-bar select{flex:1;background:#fffdf8;border:1.5px solid rgba(0,0,0,0.14);border-radius:8px;padding:9px 10px;color:#2b2a26;font-family:'DM Mono',monospace;font-size:12px;outline:none}
+.filter-bar select:focus{border-color:#b5790a}
+.abs-btn{display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;background:#fffdf8;border:1.5px solid #c0392b;border-radius:8px;padding:8px 12px;color:#c0392b;text-decoration:none;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.5px;text-transform:uppercase;transition:background .15s,color .15s}
+.abs-btn svg{width:15px;height:15px;flex-shrink:0}
+.abs-btn:hover,.abs-btn:active{background:#c0392b;color:#f2e9d8}
+.abs-btn:hover svg,.abs-btn:active svg{stroke:#f2e9d8}
 .list{display:flex;flex-direction:column;gap:10px;width:100%;max-width:360px}
 .row{display:flex;align-items:stretch;gap:8px}
 .row.filtered-out{display:none}
-.centre{width:46px;flex-shrink:0;background:#252a3d;border:1.5px solid rgba(255,255,255,0.15);border-radius:10px;color:#f0a500;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;text-align:center;text-transform:uppercase;outline:none}
-.centre:focus{border-color:#f0a500}
-.centre::placeholder{color:#4a4f6b}
-.btn{display:flex;flex:1;min-width:0;background:#252a3d;border:1.5px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;text-decoration:none;color:#eef0f8;align-items:center;gap:12px;transition:all .15s}
-.btn:hover{border-color:#f0a500;background:rgba(240,165,0,0.06)}
-.av{width:38px;height:38px;border-radius:50%;background:#2e3450;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:#8890b0;flex-shrink:0}
-.cn{font-size:13px;color:#eef0f8;font-weight:500}
-.cs{font-size:10px;color:#6b7090;margin-top:3px}
-.cs.warn{color:#f0a500}
-.cs.danger{color:#e05c5c}
-.cs.ok{color:#2dce89}
-.loading{color:#6b7090;font-size:11px;text-align:center;padding:20px}
-.err{color:#e05c5c;font-size:11px;text-align:center;padding:20px}
+.centre{width:46px;flex-shrink:0;background:var(--c-soft,#fffdf8);border:1.5px solid var(--c,rgba(0,0,0,0.14));border-radius:10px;color:var(--c,#b5790a);font-family:'Syne',sans-serif;font-weight:800;font-size:12px;text-align:center;text-transform:uppercase;outline:none}
+.centre:focus{border-color:#b5790a}
+.centre::placeholder{color:#c9bda4}
+.btn{display:flex;flex:1;min-width:0;background:#fffdf8;border:1.5px solid rgba(0,0,0,0.10);border-left:4px solid var(--c,rgba(0,0,0,0.12));border-radius:12px;padding:14px 16px;text-decoration:none;color:#2b2a26;align-items:center;gap:12px;transition:all .15s}
+.btn:hover{border-color:var(--c,#b5790a);background:var(--c-soft,rgba(181,121,10,0.10))}
+.av{width:38px;height:38px;border-radius:50%;background:var(--c,#a2987f);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:#fff;flex-shrink:0}
+.cn{font-size:13px;color:#2b2a26;font-weight:500}
+.cs{font-size:10px;color:#8a7f6b;margin-top:3px}
+.cs.warn{color:#b5790a}
+.cs.danger{color:#c0392b}
+.cs.ok{color:#1e8e5a}
+.loading{color:#8a7f6b;font-size:11px;text-align:center;padding:20px}
+.err{color:#c0392b;font-size:11px;text-align:center;padding:20px}
 </style>
 </head>
 <body>
@@ -46,6 +50,15 @@ body{background:#1c2033;color:#eef0f8;font-family:'DM Mono',monospace;min-height
 <div class="filter-bar">
   <span class="flabel">Centre</span>
   <select id="centreFilter" onchange="applyFilter()"><option value="">Tous</option></select>
+  <a class="abs-btn" href="absences.html" title="Saisie des absences">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="9" cy="7" r="3.2"/>
+      <path d="M3 20v-1.4A4.6 4.6 0 0 1 7.6 14h2.8a4.6 4.6 0 0 1 3.1 1.2"/>
+      <path d="M17 15l5 5M22 15l-5 5"/>
+    </svg>
+    Absences
+  </a>
 </div>
 <div class="list" id="list">
   <div class="loading">Chargement...</div>
@@ -130,6 +143,37 @@ const COMPAGNONS = [
 
 // Sépare "NOM PRENOM" -> { prenom, nom } : le dernier mot est considéré
 // comme le prénom (compatible avec les prénoms composés écrits avec un tiret).
+
+// ══ COULEURS ══ une couleur stable par libellé (centre, motif…)
+const COULEURS = ['#2d6cdf','#1e8e5a','#e0661a','#7b4fc9','#c0392b',
+                 '#0f8e97','#c2417f','#5b8f0e','#8a5a2b','#2f7fb5'];
+// Couleurs attribuées dans l'ordre alphabétique : deux libellés différents
+// ne tombent jamais sur la même couleur (tant qu'il y en a 10 ou moins).
+let CMAP = {};
+function majCouleurs(libelles){
+  const u=[...new Set((libelles||[]).map(x=>(x||'').trim().toUpperCase()).filter(Boolean))].sort();
+  CMAP={}; u.forEach((t,i)=>{ CMAP[t]=COULEURS[i%COULEURS.length]; });
+}
+function couleurDe(txt){
+  const t=(txt||'').trim().toUpperCase();
+  if(!t) return '';
+  if(CMAP[t]) return CMAP[t];
+  let h=0; for(let i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))>>>0;
+  return COULEURS[h%COULEURS.length];
+}
+
+function colorierRow(row){
+  const inp=row.querySelector('.centre');
+  const c=couleurDe(inp?inp.value:'');
+  if(c){ row.style.setProperty('--c',c); row.style.setProperty('--c-soft',c+'22'); }
+  else { row.style.removeProperty('--c'); row.style.removeProperty('--c-soft'); }
+}
+function colorierTout(){
+  const rows=[...document.querySelectorAll('.row')];
+  majCouleurs(rows.map(r=>{ const i=r.querySelector('.centre'); return i?i.value:''; }));
+  rows.forEach(colorierRow);
+}
+
 function firstLast(name) {
   const parts = name.trim().split(/\s+/);
   const prenom = parts[parts.length - 1];
@@ -176,6 +220,7 @@ function renderList(compagnons) {
     </a>
   </div>`;
   }).join('');
+  colorierTout();
 }
 
 function onCentreInput(input, slug) {
@@ -184,6 +229,7 @@ function onCentreInput(input, slug) {
   const row = input.closest('.row');
   row.dataset.centre = val;
   CENTRES[slug] = val;
+  colorierTout();
   refreshCentreFilterOptions();
   applyFilter();
 }
@@ -211,6 +257,7 @@ function applyFilter() {
     const show = !val || row.dataset.centre === val;
     row.classList.toggle('filtered-out', !show);
   });
+  colorierTout();
 }
 
 
