@@ -368,6 +368,8 @@ const FIREBASE_CONFIG = {
 
 // Chantiers chargés depuis Firebase (mis à jour en temps réel)
 let CHANTIERS = [];
+// Tri alphabetique sans tenir compte des majuscules/minuscules ni des accents
+const triChantier = (a,b) => String(a).localeCompare(String(b), 'fr', {sensitivity:'base', numeric:true});
 async function loadChantiers(){
   if(!db) return;
   try{
@@ -375,9 +377,9 @@ async function loadChantiers(){
     if(snap.exists()){
       const val = snap.val();
       if(Array.isArray(val)){
-        CHANTIERS = val.filter(Boolean).sort();
+        CHANTIERS = val.filter(Boolean).sort(triChantier);
       } else if(typeof val === 'object'){
-        CHANTIERS = Object.values(val).filter(Boolean).sort();
+        CHANTIERS = Object.values(val).filter(Boolean).sort(triChantier);
       }
     }
     fillSel('selMatin'); fillSel('selApm');
@@ -660,7 +662,7 @@ async function addChantierFirebase(nom){
     }
     if(liste.some(c => c.toLowerCase() === nomNorm.toLowerCase())) return;
     liste.push(nomNorm);
-    liste.sort();
+    liste.sort(triChantier);
     const data = {};
     liste.forEach((v,i) => data[i] = v);
     await db.ref('chantiers').set(data);
