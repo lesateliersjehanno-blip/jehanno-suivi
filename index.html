@@ -39,6 +39,14 @@ body{color-scheme:light;background:#f2e9d8;color:#2b2a26;font-family:'DM Mono',m
 .cs.warn{color:#b5790a}
 .cs.danger{color:#c0392b}
 .cs.ok{color:#1e8e5a}
+.statut-tabs{display:flex;gap:6px;width:100%;max-width:360px;margin-bottom:14px}
+.stab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:#fffdf8;border:1.5px solid var(--t,rgba(0,0,0,0.14));border-radius:10px;padding:7px 4px;color:var(--t,#8a7f6b);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.5px;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s}
+.stab b{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;line-height:1}
+.stab.active{background:var(--t,#8a7f6b);color:#fffdf8;border-color:var(--t,#8a7f6b)}
+.stab[data-s="tous"]{--t:#8a7f6b}
+.stab[data-s="danger"]{--t:#c0392b}
+.stab[data-s="warn"]{--t:#e0661a}
+.stab[data-s="ok"]{--t:#1e8e5a}
 .loading{color:#8a7f6b;font-size:11px;text-align:center;padding:20px}
 .err{color:#c0392b;font-size:11px;text-align:center;padding:20px}
 </style>
@@ -59,6 +67,12 @@ body{color-scheme:light;background:#f2e9d8;color:#2b2a26;font-family:'DM Mono',m
     </svg>
     Absences
   </a>
+</div>
+<div class="statut-tabs" id="statutTabs">
+  <button class="stab active" data-s="tous" onclick="setStatut('tous')"><b id="n-tous">–</b>Tous</button>
+  <button class="stab" data-s="danger" onclick="setStatut('danger')"><b id="n-danger">–</b>Rouge</button>
+  <button class="stab" data-s="warn" onclick="setStatut('warn')"><b id="n-warn">–</b>Orange</button>
+  <button class="stab" data-s="ok" onclick="setStatut('ok')"><b id="n-ok">–</b>À jour</button>
 </div>
 <div class="list" id="list">
   <div class="loading">Chargement...</div>
@@ -136,7 +150,6 @@ const COMPAGNONS = [
   { name: "CORFMAT MATHIEU", slug: "corfmat-mathieu" },
   { name: "DEROZIERES GREGOIRE", slug: "derozieres-gregoire" },
   { name: "LEMPERIERE NINO", slug: "lemperiere-nino" },
-  { name: "RAKOTONDRAVOAVY JONAH", slug: "rakotondravoavy-jonah" },
   { name: "POLLET THOMAS", slug: "pollet-thomas" },
   { name: "DELAMONNERAYE BAUDOUIN", slug: "delamonneraye-baudouin" },
 ];
@@ -208,11 +221,11 @@ function renderList(compagnons) {
     const pa = firstLast(a.name).prenom, pb = firstLast(b.name).prenom;
     return pa.localeCompare(pb, 'fr');
   });
-  list.innerHTML = sorted.map(c => {
+  list.innerHTML = sorted.map((c, i) => {
     const { prenom, nom } = firstLast(c.name);
     const centre = CENTRES[c.slug] || '';
     return `
-  <div class="row" data-slug="${c.slug}" data-centre="${centre}">
+  <div class="row" data-slug="${c.slug}" data-centre="${centre}" data-idx="${i}" data-statut="${(MISSING[c.slug]||{}).statut||''}" data-total="${(MISSING[c.slug]||{}).total??-1}">
     <input class="centre" maxlength="4" placeholder="—" value="${centre}" oninput="onCentreInput(this,'${c.slug}')" onchange="onCentreChange(this,'${c.slug}')">
     <a class="btn" href="${c.slug}.html">
       <div class="av">${initials(c.name)}</div>
@@ -221,6 +234,9 @@ function renderList(compagnons) {
   </div>`;
   }).join('');
   colorierTout();
+  // réaffiche les statuts déjà connus (après un nouveau rendu)
+  sorted.forEach(c => { if (MISSING[c.slug]) afficherStatut(c.slug); });
+  applyFilter();
 }
 
 function onCentreInput(input, slug) {
@@ -250,13 +266,38 @@ function refreshCentreFilterOptions() {
   if (values.includes(current)) sel.value = current;
 }
 
+// ══ TRI PAR STATUT ══ tous / rouge (danger) / orange (warn) / à jour (ok)
+let STATUT = 'tous';
+let MISSING = {}; // slug -> { total, statut, texte }
+
+function setStatut(s) {
+  STATUT = s;
+  document.querySelectorAll('.stab').forEach(b => b.classList.toggle('active', b.dataset.s === s));
+  applyFilter();
+}
+
 function applyFilter() {
   const sel = document.getElementById('centreFilter');
   const val = sel ? sel.value : '';
-  document.querySelectorAll('.row').forEach(row => {
-    const show = !val || row.dataset.centre === val;
+  const list = document.getElementById('list');
+  const rows = [...document.querySelectorAll('.row')];
+  const n = { tous: 0, danger: 0, warn: 0, ok: 0 };
+  rows.forEach(row => {
+    const okCentre = !val || row.dataset.centre === val;
+    if (okCentre) { n.tous++; if (n[row.dataset.statut] !== undefined) n[row.dataset.statut]++; }
+    const show = okCentre && (STATUT === 'tous' || row.dataset.statut === STATUT);
     row.classList.toggle('filtered-out', !show);
   });
+  // Ordre : "Tous" = alphabétique ; Rouge/Orange = du plus au moins de demi-journées manquantes
+  const ordre = rows.slice().sort((a, b) => {
+    if (STATUT !== 'tous') {
+      const d = (+b.dataset.total) - (+a.dataset.total);
+      if (d) return d;
+    }
+    return (+a.dataset.idx) - (+b.dataset.idx);
+  });
+  ordre.forEach(r => list.appendChild(r));
+  Object.keys(n).forEach(k => { const e = document.getElementById('n-' + k); if (e) e.textContent = n[k]; });
   colorierTout();
 }
 
@@ -317,19 +358,33 @@ async function loadMissing(c) {
     const saisies = snap.exists() ? snap.val() : {};
     const { manqueMatin, manqueApm } = missingCounts(saisies);
     const total = manqueMatin + manqueApm;
+    let texte, statut;
     if (total === 0) {
-      el.textContent = '✓ à jour';
-      el.className = 'cs ok';
+      texte = '✓ à jour'; statut = 'ok';
     } else {
       const parts = [];
       if (manqueMatin > 0) parts.push(manqueMatin + ' matin' + (manqueMatin > 1 ? 's' : ''));
       if (manqueApm > 0) parts.push(manqueApm + ' après-midi' + (manqueApm > 1 ? 's' : ''));
-      el.textContent = parts.join(' · ') + ' à compléter';
-      el.className = 'cs ' + (total > 10 ? 'danger' : 'warn');
+      texte = parts.join(' · ') + ' à compléter';
+      statut = total > 10 ? 'danger' : 'warn';
     }
+    MISSING[c.slug] = { total, statut, texte };
+    afficherStatut(c.slug);
+    applyFilter();
   } catch (e) {
     el.textContent = '';
   }
+}
+
+function afficherStatut(slug) {
+  const m = MISSING[slug];
+  const el = document.getElementById('cs-' + slug);
+  const row = document.querySelector('.row[data-slug="' + slug + '"]');
+  if (!m || !el || !row) return;
+  el.textContent = m.texte;
+  el.className = 'cs ' + m.statut;
+  row.dataset.statut = m.statut;
+  row.dataset.total = m.total;
 }
 
 async function initFirebase() {
